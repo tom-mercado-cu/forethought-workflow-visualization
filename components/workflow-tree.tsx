@@ -179,12 +179,14 @@ export function WorkflowTree({
       } else if (step.step_fields.message) {
         if (isHTMLDescription(step.step_type)) {
           description = step.step_fields.message;
+          label = "";
         } else {
           label = step.step_fields.message;
         }
       } else if (step.step_fields.prompt) {
         if (isHTMLDescription(step.step_type)) {
           description = step.step_fields.prompt;
+          label = "";
         } else {
           label = step.step_fields.prompt;
         }
@@ -195,6 +197,11 @@ export function WorkflowTree({
         label = "Trigger Workflow";
         const workflowId = step.step_fields.intent_workflow_id;
         description = workflowNames[workflowId] || workflowId;
+      }
+
+      // For HTML description step types, ensure label is empty
+      if (isHTMLDescription(step.step_type)) {
+        label = "";
       }
 
       const children: TreeNode[] = [];
@@ -408,9 +415,11 @@ export function WorkflowTree({
               <Badge variant="secondary" className="mb-2 text-xs">
                 {node.step.step_type}
               </Badge>
-              <div className="text-sm font-semibold wrap-break-word mb-1">
-                {node.label}
-              </div>
+              {node.label && (
+                <div className="text-sm font-semibold wrap-break-word mb-1">
+                  {node.label}
+                </div>
+              )}
               {node.description && (
                 <div
                   className={cn(
