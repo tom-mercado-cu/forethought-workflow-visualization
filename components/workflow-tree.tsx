@@ -208,7 +208,7 @@ export function WorkflowTree({
       step.transitions.forEach((transition, idx) => {
         const childEdgeLabel = transition.condition_expression
           ? getConditionLabel(transition.condition_expression, contextVariables)
-          : idx === step.transitions.length - 1
+          : step.transitions.length > 1 && idx === step.transitions.length - 1
           ? "else"
           : "";
 
