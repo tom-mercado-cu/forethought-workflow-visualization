@@ -19,26 +19,27 @@ export default async function LoginPage() {
   return (
     <div className="max-w-md mx-auto mt-20">
       <div className="bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6">
-          Iniciar Sesión
-        </h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-1">Log in</h2>
+        <p className="text-slate-600 mb-6">
+          Remember to use your Forethought email and password.
+        </p>
         <form action={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email address</Label>
             <Input
               id="email"
               name="email"
               type="email"
-              placeholder="tu@email.com"
+              placeholder="your@email.com"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" required />
           </div>
           <Button type="submit" className="w-full">
-            Iniciar Sesión
+            Log in
           </Button>
         </form>
       </div>
