@@ -248,7 +248,7 @@ export default async function WorkflowPage({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 max-h-[calc(100vh-10rem)] overflow-hidden">
       <div className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">

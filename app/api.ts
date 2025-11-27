@@ -2,6 +2,7 @@
 
 import {
   contextVariablesSchema,
+  intentsSchema,
   WorkflowData,
   workflowSchema,
 } from "@/lib/types";
@@ -155,7 +156,7 @@ const getForethoughtAuth = unstable_cache(
   },
   ["forethought-auth"],
   {
-    revalidate: 300, // 5 minutos
+    revalidate: 60 * 5,
   }
 );
 
@@ -256,14 +257,47 @@ export async function getContextVariables() {
     throw new Error(`Failed to get context variables: ${response.statusText}`);
   }
 
-  const data = contextVariablesSchema.parse(await response.json());
-
+  const json = await response.json();
+  console.log("json", json);
   if (
     process.env.NODE_ENV === "development" &&
     process.env.SAVE_EXAMPLE_RESPONSES === "true"
   ) {
     writeFileSync(
       join(process.cwd(), `examples/context-variables-sample-response.json`),
+      JSON.stringify(json, null, 2)
+    );
+  }
+
+  const data = contextVariablesSchema.parse(json);
+
+  return data;
+}
+
+export async function getIntents() {
+  const bearerToken = await getForethoughtAuth();
+
+  if (!bearerToken) {
+    throw new Error("Failed to get token");
+  }
+
+  const response = await fetch(
+    `https://dashboard-api.forethought.ai/dashboard-controls/solve/v2/intents?include_inquiry_counts=false&product=workflow_builder`,
+    {
+      headers: {
+        authorization: bearerToken,
+      },
+    }
+  );
+
+  const data = intentsSchema.parse(await response.json());
+
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.SAVE_EXAMPLE_RESPONSES === "true"
+  ) {
+    writeFileSync(
+      join(process.cwd(), `examples/intents-sample-response.json`),
       JSON.stringify(data, null, 2)
     );
   }

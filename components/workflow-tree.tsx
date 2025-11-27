@@ -77,6 +77,8 @@ const getStepIcon = (type: StepType) => {
       return "💬";
     case "zendesk_ticket_creation":
       return "🎫";
+    case "article_suggestion":
+      return "📰";
     default:
       return "●";
   }
