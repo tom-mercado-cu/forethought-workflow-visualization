@@ -38,17 +38,88 @@ function buildContextVariableMap(
 }
 
 /**
+ * Finds the button option display name by searching for the step that contains
+ * the transition with this value
+ */
+function getButtonOptionDisplayName(
+  fieldId: string,
+  valueId: string,
+  workflow: WorkflowData
+): string | null {
+  // Search through all steps to find a buttons step that has a transition
+  // with this field and value
+  for (const step of Object.values(workflow.canvas.step_map)) {
+    if (step.step_type === "buttons") {
+      // Check if this step has transitions with the matching field and value
+      const matchingTransition = step.transitions.find((transition) => {
+        const expr = transition.condition_expression;
+        return (
+          expr &&
+          expr.field === fieldId &&
+          expr.values &&
+          expr.values.includes(valueId)
+        );
+      });
+
+      if (matchingTransition) {
+        // Look for options in step_fields - they might be in a field like "options", "buttons", etc.
+        const stepFields = step.step_fields as Record<string, unknown>;
+
+        // Try common field names for button options
+        const possibleFields = [
+          "options",
+          "buttons",
+          "button_options",
+          "choices",
+        ];
+        for (const fieldName of possibleFields) {
+          const options = stepFields[fieldName];
+          if (Array.isArray(options)) {
+            for (const option of options) {
+              if (
+                typeof option === "object" &&
+                option !== null &&
+                "value" in option &&
+                "display_name" in option &&
+                option.value === valueId
+              ) {
+                return String(option.display_name);
+              }
+              // Also try "label" instead of "display_name"
+              if (
+                typeof option === "object" &&
+                option !== null &&
+                "value" in option &&
+                "label" in option &&
+                option.value === valueId
+              ) {
+                return String(option.label);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Replaces context variable IDs in a condition expression recursively
+ * Also replaces button option values with their display names
  */
 function replaceIdsInConditionExpression(
   expression: Transition["condition_expression"],
-  idMap: Map<string, string>
+  idMap: Map<string, string>,
+  workflow: WorkflowData
 ): Transition["condition_expression"] {
   if (!expression) return null;
 
   const newExpression: typeof expression = { ...expression };
 
   // Replace field if it exists
+  const originalFieldId = newExpression.field;
   if (newExpression.field) {
     const id = newExpression.field;
     const name = idMap.get(id);
@@ -57,10 +128,27 @@ function replaceIdsInConditionExpression(
     }
   }
 
+  // Replace values with display names if this is a button option
+  if (
+    originalFieldId &&
+    newExpression.values &&
+    Array.isArray(newExpression.values)
+  ) {
+    newExpression.values = newExpression.values.map((value) => {
+      const valueStr = String(value);
+      const displayName = getButtonOptionDisplayName(
+        originalFieldId,
+        valueStr,
+        workflow
+      );
+      return displayName !== null ? displayName : value;
+    });
+  }
+
   // Recursively process nested expressions
   if (newExpression.expressions && Array.isArray(newExpression.expressions)) {
     newExpression.expressions = newExpression.expressions.map((exp) =>
-      replaceIdsInConditionExpression(exp, idMap)
+      replaceIdsInConditionExpression(exp, idMap, workflow)
     );
   }
 
@@ -130,7 +218,8 @@ function replaceContextVariableIds(
       if (transition.condition_expression) {
         transition.condition_expression = replaceIdsInConditionExpression(
           transition.condition_expression,
-          idMap
+          idMap,
+          newWorkflow
         );
       }
     });
@@ -185,6 +274,7 @@ export default async function WorkflowPage({
             <WorkflowTree
               workflow={transformedWorkflow}
               workflowNames={workflowNames}
+              contextVariables={contextVariables}
             />
           </div>
         </div>

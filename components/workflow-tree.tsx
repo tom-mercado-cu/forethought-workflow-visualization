@@ -5,7 +5,13 @@ import type React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { Step, StepType, Transition, WorkflowData } from "@/lib/types";
+import type {
+  ContextVariables,
+  Step,
+  StepType,
+  Transition,
+  WorkflowData,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -13,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 interface WorkflowTreeProps {
   workflow: WorkflowData;
   workflowNames: Record<string, string>;
+  contextVariables?: ContextVariables;
 }
 
 interface TreeNode {
@@ -130,7 +137,11 @@ const isHTMLDescription = (stepType: StepType) => {
   return HTML_DESCRIPTION_STEP_TYPES.includes(stepType);
 };
 
-export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
+export function WorkflowTree({
+  workflow,
+  workflowNames,
+  contextVariables,
+}: WorkflowTreeProps) {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -189,7 +200,7 @@ export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
       const children: TreeNode[] = [];
       step.transitions.forEach((transition, idx) => {
         const childEdgeLabel = transition.condition_expression
-          ? getConditionLabel(transition.condition_expression)
+          ? getConditionLabel(transition.condition_expression, contextVariables)
           : idx === step.transitions.length - 1
           ? "else"
           : "";
@@ -300,7 +311,7 @@ export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
         }
       }, 100);
     }
-  }, [workflow, workflowNames]);
+  }, [workflow, workflowNames, contextVariables]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -489,38 +500,136 @@ export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
   );
 }
 
+/**
+ * Gets the display name (label) for a button option value
+ */
+function getButtonOptionLabel(
+  fieldId: string,
+  valueId: string,
+  contextVariables?: ContextVariables
+): string | null {
+  if (!contextVariables) return null;
+
+  // Search in all context variable arrays
+  const allContextVariables = [
+    ...contextVariables.context_variables,
+    ...contextVariables.template_context_variables,
+    ...contextVariables.usable_system_context_variables,
+  ];
+
+  // Find the context variable that matches the field ID
+  const contextVar = allContextVariables.find(
+    (cv) => cv.context_variable_id === fieldId
+  );
+
+  if (!contextVar) return null;
+
+  // Check if it has list_type_options
+  if (
+    contextVar.list_type_options &&
+    Array.isArray(contextVar.list_type_options)
+  ) {
+    // Find the option that matches the value ID
+    for (const option of contextVar.list_type_options) {
+      if (
+        typeof option === "object" &&
+        option !== null &&
+        "value" in option &&
+        "label" in option
+      ) {
+        if (option.value === valueId) {
+          return option.label as string;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Checks if a value looks like a button display name (not an ID)
+ * IDs typically have underscores and are long, display names are more readable
+ */
+function isButtonDisplayName(value: string): boolean {
+  // If the value doesn't look like an ID (no underscores or very short),
+  // and it's not a boolean/number, it's probably a display name
+  return (
+    !value.includes("_") || value.length < 20 || !/^[a-f0-9_]+$/i.test(value)
+  );
+}
+
 function getConditionLabel(
-  condition: Transition["condition_expression"]
+  condition: Transition["condition_expression"],
+  contextVariables?: ContextVariables
 ): string {
   if (!condition) return "";
 
   if (condition.expressions && condition.expressions.length > 0) {
     const labels = condition.expressions
       .map((exp) => {
-        const field = exp.field?.split(".").pop() || "";
+        const value = exp.values?.[0]?.toString() || "";
+
+        // If the value looks like a display name (already replaced), show only the value
+        if (isButtonDisplayName(value)) {
+          return value;
+        }
+
+        const field = exp.field || "";
+        const fieldName = field.split(".").pop() || "";
         const operator =
           exp.operator === "eq"
             ? "="
             : exp.operator === "contains"
             ? "⊃"
             : exp.operator;
-        const value = exp.values?.[0]?.toString() || "";
-        return `${field}${operator}${value}`;
+
+        // Try to get the display name for button options
+        const displayName = getButtonOptionLabel(
+          field,
+          value,
+          contextVariables
+        );
+        const displayValue = displayName || value;
+
+        // If we got a display name, show only that
+        if (displayName) {
+          return displayValue;
+        }
+
+        return `${fieldName}${operator}${displayValue}`;
       })
       .join(` ${condition.operator === "and" ? "&" : "|"} `);
     return labels;
   }
 
   if (condition.field) {
-    const field = condition.field.split(".").pop() || "";
+    const value = condition.values?.[0]?.toString() || "";
+
+    // If the value looks like a display name (already replaced), show only the value
+    if (isButtonDisplayName(value)) {
+      return value;
+    }
+
+    const field = condition.field;
+    const fieldName = field.split(".").pop() || "";
     const operator =
       condition.operator === "eq"
         ? "="
         : condition.operator === "contains"
         ? "⊃"
         : condition.operator;
-    const value = condition.values?.[0]?.toString() || "";
-    return `${field}${operator}${value}`;
+
+    // Try to get the display name for button options
+    const displayName = getButtonOptionLabel(field, value, contextVariables);
+    const displayValue = displayName || value;
+
+    // If we got a display name, show only that
+    if (displayName) {
+      return displayValue;
+    }
+
+    return `${fieldName}${operator}${displayValue}`;
   }
 
   return "true";
