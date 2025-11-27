@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { WorkflowTree } from "@/components/workflow-tree";
 import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { getWorkflow } from "../../api";
 
 export default async function WorkflowPage({
@@ -26,9 +27,11 @@ export default async function WorkflowPage({
             {Object.keys(workflow.canvas.step_map).length} steps
           </p>
         </div>
-        <Button variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Load Different Workflow
+        <Button variant="outline" asChild>
+          <Link href="/">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Load Different Workflow
+          </Link>
         </Button>
       </div>
 
