@@ -1,35 +1,42 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface WorkflowFormProps {
-  onSubmit: (token: string, workflowId: string) => void
-  loading: boolean
+  onSubmit: (token: string, workflowId: string) => void;
+  loading: boolean;
 }
 
 export function WorkflowForm({ onSubmit, loading }: WorkflowFormProps) {
-  const [token, setToken] = useState("")
-  const [workflowId, setWorkflowId] = useState("")
+  const [token, setToken] = useState("");
+  const [workflowId, setWorkflowId] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (token && workflowId) {
-      onSubmit(token, workflowId)
+      onSubmit(token, workflowId);
     }
-  }
+  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Workflow Visualizer</CardTitle>
         <CardDescription>
-          Enter your API token and workflow ID to visualize your chatbot flow as an interactive decision tree
+          Enter your API token and workflow ID to visualize your chatbot flow as
+          an interactive decision tree
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -38,7 +45,6 @@ export function WorkflowForm({ onSubmit, loading }: WorkflowFormProps) {
             <Label htmlFor="token">API Token</Label>
             <Input
               id="token"
-              type="password"
               placeholder="Bearer token..."
               value={token}
               onChange={(e) => setToken(e.target.value)}
@@ -61,5 +67,5 @@ export function WorkflowForm({ onSubmit, loading }: WorkflowFormProps) {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

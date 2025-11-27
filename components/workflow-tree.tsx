@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Step, StepType, Transition, WorkflowData } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -24,6 +25,101 @@ interface TreeNode {
   y: number;
   edgeLabel?: string;
 }
+
+const getStepColor = (type: string) => {
+  switch (type) {
+    case "condition":
+      return "bg-amber-50 border-amber-300 hover:border-amber-400";
+    case "message":
+      return "bg-blue-50 border-blue-300 hover:border-blue-400";
+    case "api_call":
+      return "bg-purple-50 border-purple-300 hover:border-purple-400";
+    case "trigger_workflow":
+      return "bg-green-50 border-green-300 hover:border-green-400";
+    case "prompt_button":
+      return "bg-pink-50 border-pink-300 hover:border-pink-400";
+    case "dynamic_list":
+      return "bg-indigo-50 border-indigo-300 hover:border-indigo-400";
+    default:
+      return "bg-gray-50 border-gray-300 hover:border-gray-400";
+  }
+};
+
+const getStepIcon = (type: StepType) => {
+  switch (type) {
+    case "condition":
+      return "◆";
+    case "text_message":
+      return "💬";
+    case "flamethrower_api_call":
+      return "🔌";
+    case "go_to_intent":
+      return "🔄";
+    case "buttons":
+      return "🔘";
+    case "dynamic_card":
+      return "📋";
+    case "unknown":
+      return "●";
+    default:
+      return "●";
+  }
+};
+
+const renderConnections = (node: TreeNode): React.ReactNode[] => {
+  const connections: React.ReactNode[] = [];
+
+  node.children.forEach((child) => {
+    const startX = node.x + 140;
+    const startY = node.y + 100;
+
+    const endX = child.x + 140;
+    const endY = child.y;
+
+    const midY = (startY + endY) / 2;
+
+    connections.push(
+      <g key={`${node.id}-${child.id}`}>
+        <path
+          d={`M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`}
+          fill="none"
+          stroke="#64748b"
+          strokeWidth="2"
+        />
+        <polygon
+          points={`${endX},${endY} ${endX - 6},${endY - 10} ${endX + 6},${
+            endY - 10
+          }`}
+          fill="#64748b"
+        />
+        {child.edgeLabel && (
+          <text
+            x={(startX + endX) / 2}
+            y={midY - 5}
+            textAnchor="middle"
+            className="text-xs font-semibold fill-slate-700"
+            style={{ fontSize: "11px" }}
+          >
+            {child.edgeLabel}
+          </text>
+        )}
+      </g>
+    );
+
+    connections.push(...renderConnections(child));
+  });
+
+  return connections;
+};
+
+const HTML_DESCRIPTION_STEP_TYPES: StepType[] = [
+  "text_message",
+  "buttons",
+  "dynamic_card",
+];
+const isHTMLDescription = (stepType: StepType) => {
+  return HTML_DESCRIPTION_STEP_TYPES.includes(stepType);
+};
 
 export function WorkflowTree({ workflow }: WorkflowTreeProps) {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
@@ -61,21 +157,20 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
       if (step.step_fields.condition_name) {
         label = step.step_fields.condition_name;
       } else if (step.step_fields.message) {
-        const msg = step.step_fields.message;
-        label = msg.length > 50 ? msg.substring(0, 50) + "..." : msg;
-      } else if (step.step_fields.prompt) {
-        label = step.step_fields.prompt.substring(0, 50);
-      } else if (step.step_fields.url) {
-        try {
-          const url = new URL(step.step_fields.url);
-          label = url.pathname.split("/").pop() || "API Call";
-          description = step.step_fields.method || "GET";
-        } catch {
-          label = "API Call";
+        if (isHTMLDescription(step.step_type)) {
+          description = step.step_fields.message;
+        } else {
+          label = step.step_fields.message;
         }
+      } else if (step.step_fields.prompt) {
+        label = step.step_fields.prompt;
+      } else if (step.step_fields.url) {
+        label = step.step_fields.url;
+        description = step.step_fields.method || "GET";
       } else if (step.step_fields.intent_workflow_id) {
         label = "Trigger Workflow";
-        description = step.step_fields.intent_workflow_id.substring(0, 12);
+        // TODO: Get workflow name from intent_workflow_id
+        description = step.step_fields.intent_workflow_id;
       }
 
       const children: TreeNode[] = [];
@@ -254,94 +349,8 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
     }
   };
 
-  const renderConnections = (node: TreeNode): React.ReactNode[] => {
-    const connections: React.ReactNode[] = [];
-
-    node.children.forEach((child) => {
-      const startX = node.x + 140;
-      const startY = node.y + 100;
-
-      const endX = child.x + 140;
-      const endY = child.y;
-
-      const midY = (startY + endY) / 2;
-
-      connections.push(
-        <g key={`${node.id}-${child.id}`}>
-          <path
-            d={`M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`}
-            fill="none"
-            stroke="#64748b"
-            strokeWidth="2"
-          />
-          <polygon
-            points={`${endX},${endY} ${endX - 6},${endY - 10} ${endX + 6},${
-              endY - 10
-            }`}
-            fill="#64748b"
-          />
-          {child.edgeLabel && (
-            <text
-              x={(startX + endX) / 2}
-              y={midY - 5}
-              textAnchor="middle"
-              className="text-xs font-semibold fill-slate-700"
-              style={{ fontSize: "11px" }}
-            >
-              {child.edgeLabel}
-            </text>
-          )}
-        </g>
-      );
-
-      connections.push(...renderConnections(child));
-    });
-
-    return connections;
-  };
-
   const renderNodes = (node: TreeNode): React.ReactNode[] => {
     const nodes: React.ReactNode[] = [];
-
-    const getStepColor = (type: string) => {
-      switch (type) {
-        case "condition":
-          return "bg-amber-50 border-amber-300 hover:border-amber-400";
-        case "message":
-          return "bg-blue-50 border-blue-300 hover:border-blue-400";
-        case "api_call":
-          return "bg-purple-50 border-purple-300 hover:border-purple-400";
-        case "trigger_workflow":
-          return "bg-green-50 border-green-300 hover:border-green-400";
-        case "prompt_button":
-          return "bg-pink-50 border-pink-300 hover:border-pink-400";
-        case "dynamic_list":
-          return "bg-indigo-50 border-indigo-300 hover:border-indigo-400";
-        default:
-          return "bg-gray-50 border-gray-300 hover:border-gray-400";
-      }
-    };
-
-    const getStepIcon = (type: StepType) => {
-      switch (type) {
-        case "condition":
-          return "◆";
-        case "text_message":
-          return "💬";
-        case "flamethrower_api_call":
-          return "🔌";
-        case "go_to_intent":
-          return "🔄";
-        case "buttons":
-          return "🔘";
-        case "dynamic_card":
-          return "📋";
-        case "unknown":
-          return "●";
-        default:
-          return "●";
-      }
-    };
 
     nodes.push(
       <div
@@ -351,6 +360,8 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
           left: node.x,
           top: node.y,
           width: "280px",
+          height: "120px",
+          overflowY: "auto",
         }}
         onClick={() =>
           setSelectedNode(selectedNode === node.id ? null : node.id)
@@ -369,13 +380,17 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
               <Badge variant="secondary" className="mb-2 text-xs">
                 {node.step.step_type}
               </Badge>
-              <div className="text-sm font-semibold break-words mb-1">
+              <div className="text-sm font-semibold wrap-break-word mb-1">
                 {node.label}
               </div>
               {node.description && (
-                <div className="text-xs text-muted-foreground break-words">
-                  {node.description}
-                </div>
+                <div
+                  className={cn(
+                    "text-xs text-muted-foreground",
+                    !isHTMLDescription(node.step.step_type) && "wrap-break-word"
+                  )}
+                  dangerouslySetInnerHTML={{ __html: node.description }}
+                />
               )}
             </div>
           </div>
@@ -476,7 +491,7 @@ function getConditionLabel(
         return `${field}${operator}${value}`;
       })
       .join(` ${condition.operator === "and" ? "&" : "|"} `);
-    return labels.length > 25 ? labels.substring(0, 25) + "..." : labels;
+    return labels;
   }
 
   if (condition.field) {

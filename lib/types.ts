@@ -41,7 +41,14 @@ const stepTypeSchema = z
 
 const stepSchema = z.object({
   step_type: stepTypeSchema,
-  step_fields: z.record(z.any()),
+  step_fields: z.object({
+    message: z.string().optional(),
+    prompt: z.string().optional(),
+    url: z.string().optional(),
+    method: z.string().optional(),
+    intent_workflow_id: z.string().optional(),
+    condition_name: z.string().optional(),
+  }),
   transitions: z.array(transitionSchema),
   condition_name: z.union([z.string(), z.null()]),
 });
