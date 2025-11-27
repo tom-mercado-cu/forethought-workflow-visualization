@@ -3,7 +3,7 @@ import { WorkflowTree } from "@/components/workflow-tree";
 import type { ContextVariables, Transition, WorkflowData } from "@/lib/types";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { getContextVariables, getWorkflow } from "../../api";
+import { getContextVariables, getWorkflow } from "../../api/api";
 
 /**
  * Builds a map from context variable IDs to their names

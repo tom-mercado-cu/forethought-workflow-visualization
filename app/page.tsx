@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { getIntents } from "./api";
+import { getIntents } from "./api/api";
 
 export default async function Page({
   searchParams,

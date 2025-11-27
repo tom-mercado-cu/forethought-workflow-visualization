@@ -1,8 +1,8 @@
-import { isAuthenticated, login } from "@/app/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { redirect } from "next/navigation";
+import { isAuthenticated, login } from "../api/auth";
 
 async function handleLogin(formData: FormData) {
   "use server";

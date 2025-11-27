@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { LogOutIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { isAuthenticated, logout } from "./api";
+import { isAuthenticated, logout } from "./api/auth";
 import "./globals.css";
 
 const geistSans = Geist({
