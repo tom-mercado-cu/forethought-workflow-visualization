@@ -32,6 +32,10 @@ const stepTypeSchema = z
     "buttons",
     "set_context_variable",
     "dynamic_card",
+    "csat_trigger_point",
+    "form",
+    "sunco_live_chat",
+    "zendesk_ticket_creation",
     "unknown",
   ])
   .catch((data) => {
@@ -59,7 +63,7 @@ export const workflowSchema = z.object({
     version: z.number(),
     is_draft: z.boolean(),
     intent_title: z.string(),
-    entry_step_id: z.string(),
+    entry_step_id: z.string().nullish(),
     org_id: z.number(),
     step_map: z.record(stepSchema),
   }),

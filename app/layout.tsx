@@ -27,7 +27,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="h-screen bg-linear-to-br from-slate-50 to-slate-100 flex flex-col overflow-hidden">
+          <div className="flex-none p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-6">
+                <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                  Chatbot Workflow Visualizer
+                </h1>
+                <p className="text-slate-600">
+                  Transform complex chatbot flows into clear, interactive
+                  decision trees
+                </p>
+              </div>
+              {children}
+            </div>
+          </div>
+        </div>
       </body>
     </html>
   );

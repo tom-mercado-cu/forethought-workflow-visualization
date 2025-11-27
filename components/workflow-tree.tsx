@@ -62,6 +62,14 @@ const getStepIcon = (type: StepType) => {
       return "📋";
     case "unknown":
       return "●";
+    case "csat_trigger_point":
+      return "🎯";
+    case "form":
+      return "📝";
+    case "sunco_live_chat":
+      return "💬";
+    case "zendesk_ticket_creation":
+      return "🎫";
     default:
       return "●";
   }
@@ -262,6 +270,10 @@ export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
       node.children.forEach((child) => getTreeBounds(child, bounds));
       return bounds;
     };
+
+    if (!entry_step_id) {
+      return;
+    }
 
     const tree = buildTree(entry_step_id);
 

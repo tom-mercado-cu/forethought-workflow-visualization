@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,22 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-interface WorkflowFormProps {
-  onSubmit: (token: string, workflowId: string) => void;
-  loading: boolean;
-}
-
-export function WorkflowForm({ onSubmit, loading }: WorkflowFormProps) {
-  const [token, setToken] = useState("");
-  const [workflowId, setWorkflowId] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (token && workflowId) {
-      onSubmit(token, workflowId);
-    }
+export function WorkflowForm() {
+  const router = useRouter();
+  const handleSubmit = async (formData: FormData) => {
+    const workflowId = formData.get("workflowId") as string;
+    router.push(`/workflows/${workflowId}`);
   };
 
   return (
@@ -35,34 +24,23 @@ export function WorkflowForm({ onSubmit, loading }: WorkflowFormProps) {
       <CardHeader>
         <CardTitle>Workflow Visualizer</CardTitle>
         <CardDescription>
-          Enter your API token and workflow ID to visualize your chatbot flow as
-          an interactive decision tree
+          Enter workflow ID to visualize your chatbot flow as an interactive
+          decision tree
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="token">API Token</Label>
-            <Input
-              id="token"
-              placeholder="Bearer token..."
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              required
-            />
-          </div>
+        <form action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="workflowId">Workflow ID</Label>
             <Input
               id="workflowId"
+              name="workflowId"
               placeholder="e.g., 12345678-abcd-1234-abcd-123456789012"
-              value={workflowId}
-              onChange={(e) => setWorkflowId(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Loading..." : "Load Workflow"}
+          <Button type="submit" className="w-full">
+            Load Workflow
           </Button>
         </form>
       </CardContent>

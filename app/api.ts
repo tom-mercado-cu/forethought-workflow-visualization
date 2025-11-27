@@ -1,8 +1,10 @@
 "use server";
 
+import { WorkflowData, workflowSchema } from "@/lib/types";
 import { chromium } from "playwright";
+import { unstable_cache } from "next/cache";
 
-export async function getAuthorizationHeader() {
+async function getForethoughtAuthInternal() {
   const forethoughtUrl = process.env.FORETHOUGHT_URL;
   const email = process.env.FORETHOUGHT_EMAIL;
   const password = process.env.FORETHOUGHT_PASSWORD;
@@ -139,4 +141,81 @@ export async function getAuthorizationHeader() {
     console.error("Error extracting Authorization header:", error);
     return null;
   }
+}
+
+const getForethoughtAuth = unstable_cache(
+  async () => {
+    return await getForethoughtAuthInternal();
+  },
+  ["forethought-auth"],
+  {
+    revalidate: 300, // 5 minutos
+  }
+);
+
+const collectWorkflowIds = (
+  stepMap: WorkflowData["canvas"]["step_map"]
+): Set<string> => {
+  const workflowIds = new Set<string>();
+  Object.values(stepMap).forEach((step) => {
+    if (step.step_fields.intent_workflow_id) {
+      workflowIds.add(step.step_fields.intent_workflow_id);
+    }
+  });
+  return workflowIds;
+};
+
+export async function getWorkflow(
+  workflowId: string,
+  { includeWorkflowNames = true }
+): Promise<WorkflowData & { workflowNames: Record<string, string> }> {
+  const bearerToken = await getForethoughtAuth();
+
+  if (!bearerToken) {
+    throw new Error("Failed to get token");
+  }
+
+  const response = await fetch(
+    `https://dashboard-api.forethought.ai/dashboard-controls/solve/v2/workflow-builder/${workflowId}`,
+    {
+      headers: {
+        authorization: bearerToken,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to get workflow: ${response.statusText}`);
+  }
+
+  const data = workflowSchema.parse(await response.json());
+
+  if (!includeWorkflowNames) {
+    return {
+      ...data,
+      workflowNames: {} as Record<string, string>,
+    };
+  }
+
+  const workflowIds = collectWorkflowIds(data.canvas.step_map);
+  if (workflowIds.size === 0) {
+    return {
+      ...data,
+      workflowNames: {} as Record<string, string>,
+    };
+  }
+
+  const workflowNames = await Promise.all(
+    Array.from(workflowIds).map(async (id) => {
+      return getWorkflow(id, { includeWorkflowNames: false });
+    })
+  );
+
+  return {
+    ...data,
+    workflowNames: workflowNames.reduce((acc, curr) => {
+      acc[curr.canvas.intent_workflow_id] = curr.canvas.intent_title;
+      return acc;
+    }, {} as Record<string, string>),
+  };
 }
