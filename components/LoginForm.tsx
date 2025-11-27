@@ -5,24 +5,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 
 export function LoginForm() {
-  const [, formAction, pending] = useActionState(
-    async (_: void | null, formData: FormData) => {
+  const [state, formAction, pending] = useActionState(
+    async (
+      _: { success: boolean | null; error: Error | null },
+      formData: FormData
+    ) => {
       const email = formData.get("email") as string;
       const password = formData.get("password") as string;
       try {
         await login({ email, password });
+        return { success: true, error: null };
       } catch (error) {
-        console.error("Error logging in:", error);
-        toast.error("Failed to log in");
+        return { success: false, error: error as Error };
       }
-      return null;
     },
-    null
+    { success: null, error: null } as {
+      success: boolean | null;
+      error: Error | null;
+    }
   );
+
+  useEffect(() => {
+    if (state.success === false) {
+      toast.error("Failed to log in");
+    }
+  }, [state.success]);
 
   return (
     <form action={formAction} className="space-y-4">

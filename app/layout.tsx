@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { LogOutIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { isAuthenticated, logout } from "./api/auth";
 import "./globals.css";
 
@@ -61,6 +62,7 @@ export default async function RootLayout({
             </div>
           </div>
         </div>
+        <Toaster />
       </body>
     </html>
   );
