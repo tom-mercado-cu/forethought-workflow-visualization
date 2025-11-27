@@ -1,7 +1,7 @@
 "use server";
 import { unstable_cache } from "next/cache";
 import { chromium } from "playwright";
-import { getEmailAndPassword } from "./auth";
+import { getEmailAndPassword, logout } from "./auth";
 
 async function getForethoughtAuthInternal({
   email,
@@ -132,7 +132,7 @@ async function getForethoughtAuthInternal({
 
     if (authorizationHeader) {
       console.log("✓ Successfully extracted Authorization header");
-      return authorizationHeader;
+      return authorizationHeader as string;
     } else {
       console.log("✗ Authorization header not found in intercepted requests");
       return null;
@@ -169,6 +169,11 @@ export async function forethoughtFetch(url: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+  }
+
+  if (response.status === 403) {
+    console.error("403 Forbidden, logging out");
+    await logout();
   }
 
   return response;

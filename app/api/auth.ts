@@ -3,6 +3,7 @@
 import * as Iron from "@hapi/iron";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getForethoughtAuth } from "./forethought";
 
 // Token utilities
 interface TokenData {
@@ -64,6 +65,12 @@ export const login = async ({
   email: string;
   password: string;
 }) => {
+  const bearerToken = await getForethoughtAuth({ email, password });
+
+  if (!bearerToken) {
+    throw new Error("Failed to get bearer token");
+  }
+
   const cookieStore = await cookies();
   const token = await encodeToken(email, password);
 
@@ -71,7 +78,7 @@ export const login = async ({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24, // 1 día en segundos
+    maxAge: TOKEN_MAX_AGE_MS,
   });
 
   redirect("/");
