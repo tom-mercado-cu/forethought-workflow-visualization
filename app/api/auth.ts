@@ -3,7 +3,7 @@
 import * as Iron from "@hapi/iron";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getForethoughtAuth } from "./forethought";
+import { forethoughtAuth } from "./forethought";
 
 // Token utilities
 interface TokenData {
@@ -65,7 +65,7 @@ export const login = async ({
   email: string;
   password: string;
 }) => {
-  const bearerToken = await getForethoughtAuth({ email, password });
+  const bearerToken = await forethoughtAuth({ email, password });
 
   if (!bearerToken) {
     throw new Error("Failed to get bearer token");

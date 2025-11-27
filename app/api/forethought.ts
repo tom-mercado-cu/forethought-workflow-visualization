@@ -1,159 +1,71 @@
 "use server";
-import { unstable_cache } from "next/cache";
-import { chromium } from "playwright";
+import {
+  CognitoUserPool,
+  CognitoUser,
+  AuthenticationDetails,
+} from "amazon-cognito-identity-js";
 import { getEmailAndPassword, logout } from "./auth";
 
-async function getForethoughtAuthInternal({
+export async function forethoughtAuth({
   email,
   password,
 }: {
   email: string;
   password: string;
 }) {
-  const forethoughtUrl = process.env.FORETHOUGHT_URL;
+  const cognitoClientId = process.env.COGNITO_CLIENT_ID;
+  const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
 
-  if (!forethoughtUrl || !email || !password) {
-    console.error("Missing required environment variables:");
-    console.error("FORETHOUGHT_URL:", forethoughtUrl ? "✓" : "✗");
-    return null;
+  if (!email || !password) {
+    throw new Error("Email and password are required");
   }
 
-  let authorizationHeader: string | null = null;
+  if (!cognitoClientId || !cognitoUserPoolId) {
+    throw new Error("Cognito client ID or user pool ID is not set");
+  }
 
-  try {
-    const browser = await chromium.launch({ headless: true });
-    const context = await browser.newContext();
-    const page = await context.newPage();
+  // Create Cognito user pool and user
+  const poolData = {
+    UserPoolId: cognitoUserPoolId,
+    ClientId: cognitoClientId,
+  };
 
-    // Set up request interception to capture the Authorization header
-    page.on("request", (request) => {
-      const url = request.url();
-      if (url.includes("dashboard-api.forethought.ai/looker-embed/settings")) {
-        const authHeader = request.headers()["authorization"];
-        if (authHeader) {
-          authorizationHeader = authHeader;
-        }
-      }
+  const userPool = new CognitoUserPool(poolData);
+  const userData = {
+    Username: email,
+    Pool: userPool,
+  };
+
+  const cognitoUser = new CognitoUser(userData);
+  const authenticationData = {
+    Username: email,
+    Password: password,
+  };
+
+  const authenticationDetails = new AuthenticationDetails(authenticationData);
+
+  // Authenticate and get tokens
+  const idToken = await new Promise<string | null>((resolve) => {
+    cognitoUser.authenticateUser(authenticationDetails, {
+      onSuccess: (result) => {
+        resolve(result.getIdToken().getJwtToken());
+      },
+      onFailure: (err) => {
+        console.error("✗ Cognito authentication failed:", err);
+        resolve(null);
+      },
     });
+  });
 
-    // Navigate to Forethought
-    console.log("Navigating to:", forethoughtUrl);
-    await page.goto(forethoughtUrl, { waitUntil: "networkidle" });
-
-    // Wait a bit for the page to load
-    await page.waitForTimeout(2000);
-
-    // Try to find and fill the email field
-    const emailSelector =
-      'input[type="email"], input[name="email"], input[id*="email"]';
-    const emailInput = await page.$(emailSelector);
-    if (emailInput) {
-      await emailInput.fill(email);
-      console.log("Email filled");
-    } else {
-      console.log("Email input not found, trying alternative selectors...");
-      // Try more generic selectors
-      const allInputs = await page.$$("input");
-      for (const input of allInputs) {
-        const type = await input.getAttribute("type");
-        const name = await input.getAttribute("name");
-        if (type === "email" || name?.toLowerCase().includes("email")) {
-          await input.fill(email);
-          console.log("Email filled using alternative selector");
-          break;
-        }
-      }
-    }
-
-    // Try to find and fill the password field
-    const passwordSelector =
-      'input[type="password"], input[name="password"], input[id*="password"]';
-    const passwordInput = await page.$(passwordSelector);
-    if (passwordInput) {
-      await passwordInput.fill(password);
-      console.log("Password filled");
-    } else {
-      console.log("Password input not found, trying alternative selectors...");
-      const allInputs = await page.$$("input[type='password']");
-      if (allInputs.length > 0) {
-        await allInputs[0].fill(password);
-        console.log("Password filled using alternative selector");
-      }
-    }
-
-    // Try to find and click the submit/login button
-    const submitSelectors = [
-      'button[type="submit"]',
-      'button:has-text("Log in")',
-      'button:has-text("Login")',
-      'button:has-text("Sign in")',
-      'input[type="submit"]',
-      '[role="button"]:has-text("Log")',
-    ];
-
-    let submitted = false;
-    for (const selector of submitSelectors) {
-      try {
-        const button = await page.$(selector);
-        if (button) {
-          await button.click();
-          console.log("Clicked submit button with selector:", selector);
-          submitted = true;
-          break;
-        }
-      } catch {
-        // Continue to next selector
-      }
-    }
-
-    if (!submitted) {
-      // Try pressing Enter on the password field
-      const passwordField = await page.$('input[type="password"]');
-      if (passwordField) {
-        await passwordField.press("Enter");
-        console.log("Pressed Enter on password field");
-      }
-    }
-
-    // Wait for navigation and network requests
-    console.log("Waiting for network requests...");
-    await page.waitForTimeout(5000);
-
-    // Try to trigger the API call by navigating or interacting
-    // Sometimes the API call happens after login, so we wait a bit more
-    let attempts = 0;
-    while (!authorizationHeader && attempts < 10) {
-      await page.waitForTimeout(2000);
-      attempts++;
-      console.log(`Waiting for API call... attempt ${attempts}/10`);
-    }
-
-    await browser.close();
-
-    if (authorizationHeader) {
-      console.log("✓ Successfully extracted Authorization header");
-      return authorizationHeader as string;
-    } else {
-      console.log("✗ Authorization header not found in intercepted requests");
-      return null;
-    }
-  } catch (error) {
-    console.error("Error extracting Authorization header:", error);
-    return null;
+  if (!idToken) {
+    throw new Error("Failed to get ID token");
   }
+
+  return `Bearer ${idToken}`;
 }
-export const getForethoughtAuth = unstable_cache(
-  async ({ email, password }: { email: string; password: string }) => {
-    return await getForethoughtAuthInternal({ email, password });
-  },
-  ["forethought-auth"],
-  {
-    revalidate: 60 * 5,
-  }
-);
 
 export async function forethoughtFetch(url: string, options: RequestInit = {}) {
-  const bearerToken = await getForethoughtAuth(await getEmailAndPassword());
+  const bearerToken = await forethoughtAuth(await getEmailAndPassword());
 
   if (!bearerToken) {
     throw new Error("Failed to get token");
