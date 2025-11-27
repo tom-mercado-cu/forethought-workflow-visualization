@@ -10,14 +10,20 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useActionState } from "react";
 
 export function WorkflowForm() {
   const router = useRouter();
-  const handleSubmit = async (formData: FormData) => {
-    const workflowId = formData.get("workflowId") as string;
-    router.push(`/workflows/${workflowId}`);
-  };
+  const [, handleSubmit, pending] = useActionState(
+    async (_: void | null, formData: FormData) => {
+      const workflowId = formData.get("workflowId") as string;
+      router.push(`/workflows/${workflowId}`);
+      return null;
+    },
+    null
+  );
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -39,8 +45,12 @@ export function WorkflowForm() {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Load Workflow
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              "Load Workflow"
+            )}
           </Button>
         </form>
       </CardContent>
