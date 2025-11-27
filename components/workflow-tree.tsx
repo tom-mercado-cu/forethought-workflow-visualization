@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface WorkflowTreeProps {
   workflow: WorkflowData;
+  workflowNames: Record<string, string>;
 }
 
 interface TreeNode {
@@ -121,7 +122,7 @@ const isHTMLDescription = (stepType: StepType) => {
   return HTML_DESCRIPTION_STEP_TYPES.includes(stepType);
 };
 
-export function WorkflowTree({ workflow }: WorkflowTreeProps) {
+export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -169,8 +170,8 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
         description = step.step_fields.method || "GET";
       } else if (step.step_fields.intent_workflow_id) {
         label = "Trigger Workflow";
-        // TODO: Get workflow name from intent_workflow_id
-        description = step.step_fields.intent_workflow_id;
+        const workflowId = step.step_fields.intent_workflow_id;
+        description = workflowNames[workflowId] || workflowId;
       }
 
       const children: TreeNode[] = [];
@@ -283,7 +284,7 @@ export function WorkflowTree({ workflow }: WorkflowTreeProps) {
         }
       }, 100);
     }
-  }, [workflow]);
+  }, [workflow, workflowNames]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 0) {

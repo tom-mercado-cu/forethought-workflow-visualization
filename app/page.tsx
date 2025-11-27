@@ -11,6 +11,65 @@ import { toast } from "sonner";
 export default function Home() {
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [workflowNames, setWorkflowNames] = useState<Record<string, string>>(
+    {}
+  );
+
+  const collectWorkflowIds = (
+    stepMap: WorkflowData["canvas"]["step_map"]
+  ): Set<string> => {
+    const workflowIds = new Set<string>();
+    Object.values(stepMap).forEach((step) => {
+      if (step.step_fields.intent_workflow_id) {
+        workflowIds.add(step.step_fields.intent_workflow_id);
+      }
+    });
+    return workflowIds;
+  };
+
+  const fetchWorkflowName = async (
+    token: string,
+    workflowId: string
+  ): Promise<string | null> => {
+    try {
+      const response = await fetch(`/api/workflow/${workflowId}`, {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      return data.canvas?.intent_title || null;
+    } catch (error) {
+      console.error(`Error fetching workflow ${workflowId}:`, error);
+      return null;
+    }
+  };
+
+  const fetchWorkflowNames = async (token: string, workflow: WorkflowData) => {
+    const workflowIds = collectWorkflowIds(workflow.canvas.step_map);
+    if (workflowIds.size === 0) return;
+
+    const results = await Promise.all(
+      Array.from(workflowIds).map(async (id) => {
+        const name = await fetchWorkflowName(token, id);
+        return { id, name };
+      })
+    );
+
+    const names: Record<string, string> = {};
+    results.forEach(({ id, name }) => {
+      if (name) {
+        names[id] = name;
+      }
+    });
+
+    setWorkflowNames(names);
+  };
 
   const fetchWorkflow = async (token: string, workflowId: string) => {
     setLoading(true);
@@ -33,6 +92,9 @@ export default function Home() {
       const validatedData = workflowSchema.parse(data);
       setWorkflow(validatedData);
 
+      // Fetch workflow names for referenced workflows
+      await fetchWorkflowNames(token, validatedData);
+
       toast.success("Workflow loaded successfully", {
         description: `Loaded workflow: ${validatedData.canvas.intent_title}`,
       });
@@ -49,6 +111,7 @@ export default function Home() {
 
   const handleReset = () => {
     setWorkflow(null);
+    setWorkflowNames({});
   };
 
   return (
@@ -93,7 +156,7 @@ export default function Home() {
       {workflow && (
         <div className="flex-1 overflow-hidden px-4 md:px-8 pb-4 md:pb-8">
           <div className="max-w-7xl mx-auto h-full">
-            <WorkflowTree workflow={workflow} />
+            <WorkflowTree workflow={workflow} workflowNames={workflowNames} />
           </div>
         </div>
       )}
