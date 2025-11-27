@@ -10,17 +10,21 @@ import { chromium } from "playwright";
 import { unstable_cache } from "next/cache";
 import { writeFileSync } from "fs";
 import { join } from "path";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-async function getForethoughtAuthInternal() {
+async function getForethoughtAuthInternal({
+  email,
+  password,
+}: {
+  email: string;
+  password: string;
+}) {
   const forethoughtUrl = process.env.FORETHOUGHT_URL;
-  const email = process.env.FORETHOUGHT_EMAIL;
-  const password = process.env.FORETHOUGHT_PASSWORD;
 
   if (!forethoughtUrl || !email || !password) {
     console.error("Missing required environment variables:");
     console.error("FORETHOUGHT_URL:", forethoughtUrl ? "✓" : "✗");
-    console.error("FORETHOUGHT_EMAIL:", email ? "✓" : "✗");
-    console.error("FORETHOUGHT_PASSWORD:", password ? "✓" : "✗");
     return null;
   }
 
@@ -151,8 +155,8 @@ async function getForethoughtAuthInternal() {
 }
 
 const getForethoughtAuth = unstable_cache(
-  async () => {
-    return await getForethoughtAuthInternal();
+  async ({ email, password }: { email: string; password: string }) => {
+    return await getForethoughtAuthInternal({ email, password });
   },
   ["forethought-auth"],
   {
@@ -172,11 +176,30 @@ const collectWorkflowIds = (
   return workflowIds;
 };
 
+const getEmailAndPassword = async () => {
+  const cookieStore = await cookies();
+  const email = cookieStore.get("email")?.value;
+  const password = cookieStore.get("password")?.value;
+  if (!email || !password) {
+    redirect("/login");
+  }
+  return { email, password };
+};
+
+export const isAuthenticated = async () => {
+  const cookieStore = await cookies();
+  const email = cookieStore.get("email")?.value;
+  const password = cookieStore.get("password")?.value;
+  return email && password;
+};
+
 export async function getWorkflow(
   workflowId: string,
   { includeWorkflowNames = true }
 ): Promise<WorkflowData & { workflowNames: Record<string, string> }> {
-  const bearerToken = await getForethoughtAuth();
+  const { email, password } = await getEmailAndPassword();
+
+  const bearerToken = await getForethoughtAuth({ email, password });
 
   if (!bearerToken) {
     throw new Error("Failed to get token");
@@ -238,7 +261,8 @@ export async function getWorkflow(
 }
 
 export async function getContextVariables() {
-  const bearerToken = await getForethoughtAuth();
+  const { email, password } = await getEmailAndPassword();
+  const bearerToken = await getForethoughtAuth({ email, password });
 
   if (!bearerToken) {
     throw new Error("Failed to get token");
@@ -275,7 +299,8 @@ export async function getContextVariables() {
 }
 
 export async function getIntents() {
-  const bearerToken = await getForethoughtAuth();
+  const { email, password } = await getEmailAndPassword();
+  const bearerToken = await getForethoughtAuth({ email, password });
 
   if (!bearerToken) {
     throw new Error("Failed to get token");
@@ -304,3 +329,23 @@ export async function getIntents() {
 
   return data;
 }
+
+export const login = async ({
+  email,
+  password,
+}: {
+  email: string;
+  password: string;
+}) => {
+  const cookieStore = await cookies();
+  cookieStore.set("email", email);
+  cookieStore.set("password", password);
+  redirect("/");
+};
+
+export const logout = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete("email");
+  cookieStore.delete("password");
+  redirect("/login");
+};
