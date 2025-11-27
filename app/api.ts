@@ -1,8 +1,14 @@
 "use server";
 
-import { WorkflowData, workflowSchema } from "@/lib/types";
+import {
+  contextVariablesSchema,
+  WorkflowData,
+  workflowSchema,
+} from "@/lib/types";
 import { chromium } from "playwright";
 import { unstable_cache } from "next/cache";
+import { writeFileSync } from "fs";
+import { join } from "path";
 
 async function getForethoughtAuthInternal() {
   const forethoughtUrl = process.env.FORETHOUGHT_URL;
@@ -190,6 +196,16 @@ export async function getWorkflow(
 
   const data = workflowSchema.parse(await response.json());
 
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.SAVE_EXAMPLE_RESPONSES === "true"
+  ) {
+    writeFileSync(
+      join(process.cwd(), `examples/${workflowId}-sample-response.json`),
+      JSON.stringify(data, null, 2)
+    );
+  }
+
   if (!includeWorkflowNames) {
     return {
       ...data,
@@ -218,4 +234,39 @@ export async function getWorkflow(
       return acc;
     }, {} as Record<string, string>),
   };
+}
+
+export async function getContextVariables() {
+  const bearerToken = await getForethoughtAuth();
+
+  if (!bearerToken) {
+    throw new Error("Failed to get token");
+  }
+
+  const response = await fetch(
+    `https://dashboard-api.forethought.ai/dashboard-controls/solve/v2/workflow-builder/context-variables`,
+    {
+      headers: {
+        authorization: bearerToken,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to get context variables: ${response.statusText}`);
+  }
+
+  const data = contextVariablesSchema.parse(await response.json());
+
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.SAVE_EXAMPLE_RESPONSES === "true"
+  ) {
+    writeFileSync(
+      join(process.cwd(), `examples/context-variables-sample-response.json`),
+      JSON.stringify(data, null, 2)
+    );
+  }
+
+  return data;
 }

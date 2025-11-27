@@ -172,7 +172,11 @@ export function WorkflowTree({ workflow, workflowNames }: WorkflowTreeProps) {
           label = step.step_fields.message;
         }
       } else if (step.step_fields.prompt) {
-        label = step.step_fields.prompt;
+        if (isHTMLDescription(step.step_type)) {
+          description = step.step_fields.prompt;
+        } else {
+          label = step.step_fields.prompt;
+        }
       } else if (step.step_fields.url) {
         label = step.step_fields.url;
         description = step.step_fields.method || "GET";
