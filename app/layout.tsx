@@ -51,7 +51,7 @@ export default async function RootLayout({
                 </div>
                 {authenticated && (
                   <form action={handleLogout}>
-                    <Button type="submit">
+                    <Button type="submit" variant="destructive">
                       <LogOutIcon className="w-4 h-4" />
                       Logout
                     </Button>
