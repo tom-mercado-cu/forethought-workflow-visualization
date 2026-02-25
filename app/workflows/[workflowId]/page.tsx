@@ -1,8 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { WorkflowTree } from "@/components/workflow-tree";
+import { WorkflowPageClient } from "@/components/workflow-page-client";
 import type { ContextVariables, Transition, WorkflowData } from "@/lib/types";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { getContextVariables, getWorkflow } from "../../api/api";
 
 /**
@@ -248,37 +245,10 @@ export default async function WorkflowPage({
   );
 
   return (
-    <div className="flex flex-col gap-4 max-h-[calc(100vh-10rem)] overflow-hidden">
-      <div className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">
-            {workflow.canvas.intent_title}
-          </h2>
-          <p className="text-sm text-slate-600">
-            Version {workflow.canvas.version} •{" "}
-            {workflow.canvas.is_draft ? "Draft" : "Published"} •{" "}
-            {Object.keys(workflow.canvas.step_map).length} steps
-          </p>
-        </div>
-        <Button variant="outline" asChild>
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Load Different Workflow
-          </Link>
-        </Button>
-      </div>
-
-      {transformedWorkflow && (
-        <div className="flex-1 overflow-hidden">
-          <div className="max-w-7xl mx-auto h-full">
-            <WorkflowTree
-              workflow={transformedWorkflow}
-              workflowNames={workflowNames}
-              contextVariables={contextVariables}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+    <WorkflowPageClient
+      workflow={transformedWorkflow}
+      workflowNames={workflowNames}
+      contextVariables={contextVariables}
+    />
   );
 }

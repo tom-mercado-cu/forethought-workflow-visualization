@@ -20,6 +20,7 @@ interface WorkflowTreeProps {
   workflow: WorkflowData;
   workflowNames: Record<string, string>;
   contextVariables?: ContextVariables;
+  highlightedNodeIds?: string[];
 }
 
 interface TreeNode {
@@ -143,6 +144,7 @@ export function WorkflowTree({
   workflow,
   workflowNames,
   contextVariables,
+  highlightedNodeIds = [],
 }: WorkflowTreeProps) {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
   const [scale, setScale] = useState(1);
@@ -405,9 +407,11 @@ export function WorkflowTree({
         }
       >
         <Card
-          className={`p-4 border-2 transition-all cursor-pointer ${getStepColor(
-            node.step.step_type
-          )} ${
+          className={`p-4 border-2 transition-all cursor-pointer ${
+            highlightedNodeIds.includes(node.id)
+              ? "bg-red-50 border-red-500 border-4 shadow-lg shadow-red-200"
+              : getStepColor(node.step.step_type)
+          } ${
             selectedNode === node.id ? "ring-2 ring-offset-2 ring-blue-500" : ""
           }`}
         >
