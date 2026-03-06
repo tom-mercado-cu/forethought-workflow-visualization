@@ -1,6 +1,7 @@
 "use client";
 
-import { analyzeWorkflow, WorkflowIssue } from "@/app/api/analyze";
+import { analyzeWorkflow } from "@/app/api/analyze";
+import type { WorkflowIssue } from "@/app/api/analyze";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -170,18 +171,22 @@ export function FindIssuesPanel({ workflow, onIssuesFound, onNavigateToNode }: F
                       <div className="flex items-center justify-between pt-1">
                         {issue.splitCondition !== "N/A" && (
                           <p className="text-xs text-slate-400">
-                            Split:{" "}
+                            Condition:{" "}
                             <span className="font-medium text-slate-500">
-                              {issue.splitCondition}
+                              {issue.splitCondition.replace(/\?$/, "")}
                             </span>
                           </p>
                         )}
-                        {firstNodeId && onNavigateToNode && (
+                        {onNavigateToNode && (
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-6 px-2 text-xs text-slate-500 hover:text-slate-900 ml-auto"
                             onClick={() => {
+                              if (!firstNodeId) {
+                                toast.error("No step location available for this issue.");
+                                return;
+                              }
                               onNavigateToNode(firstNodeId);
                               setIsOpen(false);
                             }}

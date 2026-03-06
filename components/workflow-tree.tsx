@@ -463,16 +463,26 @@ export const WorkflowTree = forwardRef<WorkflowTreeHandle, WorkflowTreeProps>(fu
 
   useImperativeHandle(ref, () => ({
     navigateTo(nodeId: string) {
-      if (!treeData || !containerRef.current) return;
+      if (!treeData || !containerRef.current) {
+        console.log("[navigateTo] abort: treeData=", !!treeData, "containerRef=", !!containerRef.current);
+        return;
+      }
       const node = findNodeById(treeData, nodeId);
-      if (!node) return;
-      const { clientWidth, clientHeight } = containerRef.current;
+      if (!node) {
+        console.log("[navigateTo] node not found for id:", nodeId);
+        return;
+      }
+      const rect = containerRef.current.getBoundingClientRect();
+      const visibleWidth = rect.width;
+      const visibleHeight = Math.min(rect.height, window.innerHeight - Math.max(rect.top, 0));
       const targetScale = 1;
+      const newOffset = {
+        x: visibleWidth / 2 - (node.x + 140) * targetScale,
+        y: visibleHeight / 2 - (node.y + 60) * targetScale,
+      };
+      console.log("[navigateTo] nodeId:", nodeId, "node pos:", node.x, node.y, "rect:", rect.width, rect.height, rect.top, "visibleHeight:", visibleHeight, "newOffset:", newOffset);
       setScale(targetScale);
-      setOffset({
-        x: clientWidth / 2 - (node.x + 140) * targetScale,
-        y: clientHeight / 2 - (node.y + 60) * targetScale,
-      });
+      setOffset(newOffset);
     },
   }));
 

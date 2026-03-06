@@ -15,7 +15,6 @@ type SplitPoint = {
 
 type StepSummary = {
   id: string;
-  position: number;
   step_type: string;
   label: string;
   url?: string;
@@ -177,7 +176,6 @@ function traverseBranch(
   const summaries: StepSummary[] = [];
   const visited = new Set<string>();
   const queue: string[] = [startStepId];
-  let position = 0;
 
   while (queue.length > 0 && summaries.length < 30) {
     const stepId = queue.shift()!;
@@ -189,7 +187,6 @@ function traverseBranch(
 
     summaries.push({
       id: stepId,
-      position: position++,
       step_type: step.step_type,
       label: getStepLabel(step),
       ...(step.step_fields.url && {
