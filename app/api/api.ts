@@ -44,7 +44,12 @@ export async function getWorkflow(
     `${DASHBOARD_API_URL}/dashboard-controls/solve/v2/workflow-builder/${workflowId}`
   );
 
-  const data = workflowSchema.parse(await response.json());
+  const json = await response.json();
+  const result = workflowSchema.safeParse(json);
+  if (!result.success) {
+    throw new Error(`Workflow schema validation failed: ${result.error.issues.map((i) => i.message).join(", ")}`);
+  }
+  const data = result.data;
 
   saveExampleResponse(data, workflowId);
 
@@ -83,7 +88,12 @@ export async function getContextVariables() {
     `${DASHBOARD_API_URL}/dashboard-controls/solve/v2/workflow-builder/context-variables`
   );
 
-  const data = contextVariablesSchema.parse(await response.json());
+  const cvJson = await response.json();
+  const cvResult = contextVariablesSchema.safeParse(cvJson);
+  if (!cvResult.success) {
+    throw new Error(`Context variables schema validation failed: ${cvResult.error.issues.map((i) => i.message).join(", ")}`);
+  }
+  const data = cvResult.data;
 
   saveExampleResponse(data, "context-variables");
 

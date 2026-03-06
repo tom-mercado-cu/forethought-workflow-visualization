@@ -14,12 +14,17 @@ import type {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Maximize2, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+
+export interface WorkflowTreeHandle {
+  navigateTo: (nodeId: string) => void;
+}
 
 interface WorkflowTreeProps {
   workflow: WorkflowData;
   workflowNames: Record<string, string>;
   contextVariables?: ContextVariables;
+  highlightedNodeIds?: string[];
 }
 
 interface TreeNode {
@@ -139,11 +144,21 @@ const isHTMLDescription = (stepType: StepType) => {
   return HTML_DESCRIPTION_STEP_TYPES.includes(stepType);
 };
 
-export function WorkflowTree({
+function findNodeById(node: TreeNode, id: string): TreeNode | null {
+  if (node.id === id) return node;
+  for (const child of node.children) {
+    const found = findNodeById(child, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+export const WorkflowTree = forwardRef<WorkflowTreeHandle, WorkflowTreeProps>(function WorkflowTree({
   workflow,
   workflowNames,
   contextVariables,
-}: WorkflowTreeProps) {
+  highlightedNodeIds = [],
+}, ref) {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -405,11 +420,13 @@ export function WorkflowTree({
         }
       >
         <Card
-          className={`p-4 border-2 transition-all cursor-pointer ${getStepColor(
-            node.step.step_type
-          )} ${
-            selectedNode === node.id ? "ring-2 ring-offset-2 ring-blue-500" : ""
-          }`}
+          className={cn(
+            "p-4 transition-all cursor-pointer",
+            highlightedNodeIds.includes(node.id)
+              ? "bg-red-50 border-4 border-red-500 shadow-lg shadow-red-200"
+              : `border-2 ${getStepColor(node.step.step_type)}`,
+            selectedNode === node.id && "ring-2 ring-offset-2 ring-blue-500"
+          )}
         >
           <div className="flex items-start gap-2">
             <span className="text-2xl">{getStepIcon(node.step.step_type)}</span>
@@ -443,6 +460,31 @@ export function WorkflowTree({
 
     return nodes;
   };
+
+  useImperativeHandle(ref, () => ({
+    navigateTo(nodeId: string) {
+      if (!treeData || !containerRef.current) {
+        console.log("[navigateTo] abort: treeData=", !!treeData, "containerRef=", !!containerRef.current);
+        return;
+      }
+      const node = findNodeById(treeData, nodeId);
+      if (!node) {
+        console.log("[navigateTo] node not found for id:", nodeId);
+        return;
+      }
+      const rect = containerRef.current.getBoundingClientRect();
+      const visibleWidth = rect.width;
+      const visibleHeight = Math.min(rect.height, window.innerHeight - Math.max(rect.top, 0));
+      const targetScale = 1;
+      const newOffset = {
+        x: visibleWidth / 2 - (node.x + 140) * targetScale,
+        y: visibleHeight / 2 - (node.y + 60) * targetScale,
+      };
+      console.log("[navigateTo] nodeId:", nodeId, "node pos:", node.x, node.y, "rect:", rect.width, rect.height, rect.top, "visibleHeight:", visibleHeight, "newOffset:", newOffset);
+      setScale(targetScale);
+      setOffset(newOffset);
+    },
+  }));
 
   if (!treeData) {
     return (
@@ -509,7 +551,7 @@ export function WorkflowTree({
       </div>
     </div>
   );
-}
+});
 
 /**
  * Gets the display name (label) for a button option value
